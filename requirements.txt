@@ -1,5 +1,5 @@
 streamlit==1.41.1
-torch==2.6.0
+torch==2.9.0
 numpy==2.2.4
 joblib==1.4.2
 pandas==2.2.3
