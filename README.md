@@ -1,125 +1,96 @@
 # 🧭 Career Path Recommender
 
-An interactive **Streamlit** application that recommends the best career path based on your skills. The app uses a **deep learning model (PyTorch MLP)** trained on skill-to-career mappings to provide intelligent career recommendations.
+An interactive **Streamlit** web application that helps users discover their ideal career path through a simple Yes/No quiz. Instead of requiring technical jargon, the app asks plain-language questions about interests and skills, then uses a trained deep learning model to recommend the top 3 career matches.
 
-## 🚀 Features
+## ✨ Features
 
-- **Yes/No Quiz Interface**: Answer 27 simple plain-language questions about your interests
-- **AI-Powered Recommendations**: Uses a trained PyTorch MLP model with TF-IDF vectorization
-- **Top 3 Career Matches**: Displays the most suitable careers with confidence scores
-- **6 Career Categories**:
-  - Artificial Intelligence
-  - Data Science
-  - Development
-  - Security
-  - Software Development and Engineering
-  - User Experience (UX) and UI Design
+- **Yes/No Quiz Interface** — 27 easy-to-understand questions, no technical knowledge required.
+- **Deep Learning Model** — A multi-layer perceptron (MLP) trained on skill-to-career mappings with **96.2% validation accuracy**.
+- **Top 3 Recommendations** — Results are ranked by confidence score and displayed with progress bars.
+- **Retake & Navigate** — Users can go back to previous questions or retake the quiz at any time.
 
-## 📋 Prerequisites
+## 🧠 How It Works
 
-- Python 3.9+
+1. The user answers 27 Yes/No questions about their interests and skills.
+2. "Yes" answers are collected and transformed using a **TF-IDF vectorizer**.
+3. The vectorized input is passed through a trained **PyTorch MLP** neural network.
+4. Softmax probabilities (with temperature scaling) produce a ranked list of career matches.
+5. The **top 3 careers** are displayed with confidence percentages.
+
+### Career Categories
+
+The model classifies users into one of six career paths:
+
+| # | Career Path |
+|---|-------------|
+| 0 | Artificial Intelligence |
+| 1 | Data Science |
+| 2 | Development |
+| 3 | Security |
+| 4 | Software Development and Engineering |
+| 5 | User Experience (UX) and User Interface (UI) Design |
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Python 3.11
 - pip (Python package manager)
 
-## 🛠️ Installation
+### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/career-path-recommender.git
-   cd career-path-recommender
+   git clone https://github.com/Ashraf-Meshref/career-recommender-grad-project.git
+   cd career-recommender-grad-project
    ```
 
-2. **Create a virtual environment (recommended)**
-   ```bash
-   python -m venv venv
-   
-   # On Windows:
-   venv\Scripts\activate
-   
-   # On macOS/Linux:
-   source venv/bin/activate
-   ```
-
-3. **Install dependencies**
+2. **Install dependencies**
    ```bash
    pip install -r requirements.txt
    ```
 
-## 💻 Running Locally
-
-```bash
-streamlit run app_streamlit.py
-```
-
-The app will open in your default browser at `http://localhost:8501`.
-
-## ☁️ Deploying to Streamlit Cloud
-
-### Step 1: Push to GitHub
-
-1. Create a new repository on [GitHub](https://github.com)
-2. Initialize git and push your code:
+3. **Run the app**
    ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git branch -M main
-   git remote add origin https://github.com/yourusername/career-path-recommender.git
-   git push -u origin main
+   streamlit run app.py
    ```
 
-### Step 2: Deploy on Streamlit Cloud
-
-1. Go to [share.streamlit.io](https://share.streamlit.io)
-2. Sign in with your GitHub account
-3. Click **"New app"**
-4. Select your repository, branch (`main`), and set the main file path to `app_streamlit.py`
-5. Click **"Deploy"**
-
-### Step 3: Configure (if needed)
-
-- The app uses **relative paths** for all model artifacts — no additional configuration needed
-- All dependencies are listed in `requirements.txt`
-- The model files (~22MB) are included in the repository
+4. Open your browser to the URL shown in the terminal (typically `http://localhost:8501`).
 
 ## 📁 Project Structure
 
 ```
-├── app_streamlit.py              # Main Streamlit application (entry point)
-├── requirements.txt              # Python dependencies
-├── .gitignore                    # Git ignore rules
-├── README.md                     # This file
-├── .streamlit/
-│   └── config.toml               # Streamlit configuration
-├── artifacts/
-│   ├── best_model.pt             # Trained PyTorch model weights (~22MB)
-│   ├── tfidf_vectorizer.pkl      # TF-IDF vectorizer
-│   ├── label_encoder.pkl         # Label encoder for career categories
-│   └── model_meta.json           # Model metadata (input dim, classes, etc.)
-├── Dataset/
-│   └── Career_Dataset.xlsx       # Training dataset (not needed for deployment)
-├── outputs/                      # Training visualizations (not needed for deployment)
-└── career_recommender.ipynb      # Training notebook (not needed for deployment)
+├── app.py                      # Main Streamlit application
+├── requirements.txt            # Python dependencies
+├── runtime.txt                 # Python runtime version (for deployment)
+├── README.md                   # This file
+└── artifacts/
+    ├── best_model.pt           # Trained PyTorch model weights
+    ├── label_encoder.pkl       # Label encoder for career classes
+    ├── model_meta.json         # Model metadata (input dim, classes, accuracy)
+    └── tfidf_vectorizer.pkl    # Fitted TF-IDF vectorizer
 ```
 
-## 🧠 Model Architecture
+## 🧪 Model Details
 
-The model is a **Multi-Layer Perceptron (MLP)** with:
-- Input layer: TF-IDF features (up to 5000)
-- Hidden layers: 1024 → 512 → 256 → 128 neurons
-- Output layer: 6 career classes
-- Regularization: BatchNorm, Dropout (0.4/0.3/0.2), Weight Decay
-- Best validation accuracy: **~96.2%**
+- **Architecture**: 5-layer MLP with Batch Normalization, ReLU activations, and Dropout.
+- **Input**: TF-IDF vectors (4,678 features).
+- **Output**: 6 career classes.
+- **Validation Accuracy**: 96.2%.
+- **Temperature Scaling**: A softmax temperature of 2.5 is used to produce more realistic confidence spreads.
 
-## 🔒 Security
+## 🛠️ Tech Stack
 
-- No hardcoded API keys or secrets
-- No sensitive data in the repository
-- All paths are relative
+- **Frontend**: [Streamlit](https://streamlit.io/)
+- **Machine Learning**: [PyTorch](https://pytorch.org/), [scikit-learn](https://scikit-learn.org/)
+- **Data Processing**: NumPy, Joblib
 
-## 📝 License
+## 📄 License
 
-This project is for educational purposes.
+This project was developed as a graduation project. All rights reserved.
 
-## 🤝 Contributing
+## 👤 Author
 
-Contributions, issues, and feature requests are welcome!
+**Ashraf Meshref**
+
+- GitHub: [@Ashraf-Meshref](https://github.com/Ashraf-Meshref)

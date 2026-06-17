@@ -13,8 +13,6 @@ import numpy as np
 import joblib
 import json
 import re
-import pandas as pd
-import plotly.express as px
 
 # ── Page config ─────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -58,75 +56,134 @@ def clean_skills(text):
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
-def predict_career(skills_text):
+# Temperature > 1 softens an overconfident softmax (e.g. 100%/0%/0%) into a
+# more realistic spread (e.g. 70%/20%/10%) without changing the ranking order.
+# Tune this value: try 1.5, 2.0, 3.0, 4.0 and see what "feels" right.
+SOFTMAX_TEMPERATURE = 2.5
+
+def predict_career(skills_text, temperature=SOFTMAX_TEMPERATURE):
     cleaned = clean_skills(skills_text)
     vec     = tfidf.transform([cleaned]).toarray().astype(np.float32)
     tensor  = torch.tensor(vec).to(device)
     with torch.no_grad():
-        probs = torch.softmax(model(tensor), dim=1).cpu().numpy()[0]
+        logits = model(tensor)
+        probs  = torch.softmax(logits / temperature, dim=1).cpu().numpy()[0]
     ranked = sorted(
         [(le.classes_[i], float(probs[i])) for i in range(len(le.classes_))],
         key=lambda x: -x[1]
     )
     return ranked
 
-# ── The 27 skills, mapped to plain-language Yes/No questions ────────────────
+# ── The 27 skills, mapped to easy, descriptive Yes/No questions ─────────────
 # (skill_name, question_text)
 QUESTIONS = [
     ("Web Development",
-     "When you visit a page online, are you curious how its look, buttons, and pages were actually made?"),
+     "Imagine sitting down every day to build websites: designing pages, adding buttons, "
+     "and making sure everything works when people click on it. Would you enjoy doing that as your job?"),
+
     ("Mobile App Development",
-     "Do you ever look at an app on your phone and wonder how it was built?"),
+     "Imagine spending your day building phone apps: designing each screen, adding features, "
+     "and testing them on a real phone. Would you enjoy doing that as your job?"),
+
     ("Artificial Intelligence (AI) and Machine Learning",
-     "Are you fascinated by computers that can make decisions or 'think' on their own, like chatbots or self-driving cars?"),
+     "Imagine spending your day building smart systems like ChatGPT or Siri: teaching a computer "
+     "to understand language, recognize patterns, or make decisions on its own. Would you enjoy doing that as your job?"),
+
     ("Problem Solving and Analysis",
-     "When something is broken or confusing, do you enjoy digging in step by step until you figure out why?"),
+     "Imagine spending your day looking at broken or confusing situations, breaking them into small "
+     "parts, and working step by step until you find the real cause and fix it. Would you enjoy doing that as your job?"),
+
     ("Cybersecurity",
-     "Do you find it interesting how hackers break into systems, and how people defend against them?"),
+     "Imagine spending your day protecting computers and accounts from hackers: finding weak points, "
+     "blocking attacks, and keeping data safe. Would you enjoy doing that as your job?"),
+
     ("Operating Systems and Networking",
-     "Are you curious how your phone connects to WiFi, or how computers talk to each other over the internet?"),
+     "Imagine spending your day working on how computers connect and talk to each other: setting up "
+     "networks, fixing connection problems, and making sure data travels correctly. Would you enjoy doing that as your job?"),
+
     ("Database Development",
-     "Do you like the idea of organizing huge amounts of information so it's easy to find later (like a giant digital filing cabinet)?"),
+     "Imagine spending your day building and organizing huge digital storage systems, like the ones "
+     "that hold millions of customer orders, so information can be found instantly. Would you enjoy doing that as your job?"),
+
     ("Data Analysis and Visualization",
-     "Do you enjoy looking at numbers or spreadsheets and turning them into charts that tell a story?"),
+     "Imagine spending your day looking at piles of numbers, like sales or survey results, and turning "
+     "them into clear charts and graphs that explain what's happening. Would you enjoy doing that as your job?"),
+
     ("API Testing",
-     "Do you enjoy checking whether two separate apps or systems actually work correctly when connected together?"),
+     "Imagine spending your day checking that different apps and systems are connecting to each other "
+     "correctly, like making sure a food delivery app can read a restaurant's menu without errors. Would you enjoy doing that as your job?"),
+
     ("Performance Testing",
-     "Are you the type of person who gets annoyed when an app is slow, and wants to know exactly why?"),
+     "Imagine spending your day testing apps and websites to find out exactly why they are slow, then "
+     "working to make them faster. Would you enjoy doing that as your job?"),
+
     ("Statistical Analysis",
-     "Do you enjoy working with probabilities and numbers, like predicting outcomes or analyzing surveys?"),
+     "Imagine spending your day using numbers and past data to calculate the chances of something "
+     "happening, similar to how weather or sports predictions are made. Would you enjoy doing that as your job?"),
+
     ("Deep Learning",
-     "Are you curious about how a computer can learn to recognize a face or voice just from seeing lots of examples?"),
+     "Imagine spending your day training computer systems to recognize faces, understand speech, or "
+     "spot patterns by studying thousands of examples, without writing exact step-by-step rules. Would you enjoy doing that as your job?"),
+
     ("Machine Learning",
-     "Would you find it exciting to teach a computer to improve at a task just by giving it more data, instead of writing exact rules?"),
+     "Imagine spending your day building systems that learn and improve on their own by studying lots "
+     "of examples, instead of you writing every instruction by hand. Would you enjoy doing that as your job?"),
+
     ("Data Engineering",
-     "Do you like the idea of building the 'pipes' that move information from one place to another automatically?"),
+     "Imagine spending your day building the systems that move huge amounts of data automatically from "
+     "one place to another inside a company, so it's ready for other people to use. Would you enjoy doing that as your job?"),
+
     ("Cloud Computing",
-     "Have you heard of things like Google Drive or Netflix running on remote servers, and are you curious how that works?"),
+     "Imagine spending your day setting up and managing services like Netflix or Google Drive, which "
+     "run on remote servers instead of one single computer. Would you enjoy doing that as your job?"),
+
     ("Blockchain",
-     "Are you curious about how cryptocurrencies like Bitcoin keep records securely without one central authority?"),
+     "Imagine spending your day building secure systems, like the ones behind Bitcoin, that record "
+     "transactions without needing a bank in the middle. Would you enjoy doing that as your job?"),
+
     ("System Design",
-     "Do you enjoy planning things out on a big-picture level, like how all the pieces of a large project should fit together?"),
+     "Imagine spending your day planning, at a big-picture level, how all the different parts of a "
+     "large software system should fit and work together before anyone starts building it. Would you enjoy doing that as your job?"),
+
     ("Project Management",
-     "Do you enjoy organizing people, deadlines, and tasks to make sure a project gets finished on time?"),
+     "Imagine spending your day organizing people, schedules, and tasks, making sure everyone knows "
+     "what to do so a project finishes on time. Would you enjoy doing that as your job?"),
+
     ("Game Development",
-     "Have you ever played a video game and wished you could build your own?"),
+     "Imagine spending your day designing and building video games, from characters and levels to "
+     "the rules of how the game works. Would you enjoy doing that as your job?"),
+
     ("Network Security",
-     "Are you interested in protecting a company's internet connections and servers from outside attacks?"),
+     "Imagine spending your day defending a company's internet connections and servers from outside "
+     "attacks, like guarding the doors and windows of a building. Would you enjoy doing that as your job?"),
+
     ("Graphic Design",
-     "Do you enjoy making things look visually appealing, like posters, logos, or color schemes?"),
+     "Imagine spending your day choosing colors, fonts, and layouts, and designing logos, posters, or "
+     "other visuals to make things look attractive. Would you enjoy doing that as your job?"),
+
     ("UI/UX Knowledge",
-     "Do you get frustrated when an app or website is confusing to use, and think about how it could be simpler?"),
+     "Imagine spending your day redesigning confusing apps and websites to make them simple and "
+     "pleasant for people to use. Would you enjoy doing that as your job?"),
+
     ("Internet of Things",
-     "Are you interested in smart gadgets, like smart watches, smart thermostats, or smart light bulbs?"),
+     "Imagine spending your day building or programming smart everyday devices, like smart watches, "
+     "smart light bulbs, or smart thermostats, that connect to the internet. Would you enjoy doing that as your job?"),
+
     ("Big Data Technologies",
-     "Are you interested in how companies like Amazon or Google handle and store enormous amounts of data?"),
+     "Imagine spending your day managing extremely large amounts of data, more than a normal computer "
+     "can handle alone, using special tools built for companies like Amazon or Google. Would you enjoy doing that as your job?"),
+
     ("Image Processing",
-     "Are you curious how apps can automatically blur backgrounds, detect faces, or enhance photos?"),
+     "Imagine spending your day building tools that can automatically blur backgrounds, detect faces, "
+     "or improve photos, by working directly with the pixels in images. Would you enjoy doing that as your job?"),
+
     ("Feature Engineering",
-     "Do you enjoy cleaning up messy information and reshaping it so it's more useful before analyzing it?"),
+     "Imagine spending your day cleaning and reshaping messy data so it becomes useful, similar to "
+     "tidying a messy room before you can really use it. Would you enjoy doing that as your job?"),
+
     ("Software Quality Testing",
-     "Do you have a knack for spotting mistakes or things that don't work right before anyone else notices?"),
+     "Imagine spending your day trying to break apps on purpose, before they are released, to find "
+     "bugs and mistakes that other people missed. Would you enjoy doing that as your job?"),
 ]
 TOTAL_Q = len(QUESTIONS)
 
@@ -164,7 +221,7 @@ if not st.session_state.finished:
 
     st.progress(idx / TOTAL_Q)
     st.markdown(f"**Question {idx + 1} of {TOTAL_Q}**")
-    st.subheader(question_text)
+    st.markdown(f"{question_text}  \nThis relates to the skill: {skill_name}")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -183,19 +240,19 @@ else:
     yes_skills = [skill for skill, val in st.session_state.answers.items() if val]
 
     if not yes_skills:
-        st.warning("You answered 'No' to everything. Try the quiz again and select at least a few areas that spark your interest.")
+        st.warning("You answered 'No' to everything, so there's nothing to match yet. "
+                    "Try the quiz again and say Yes to at least a few things you enjoy.")
     else:
         skills_text = ", ".join(yes_skills)
         ranked = predict_career(skills_text)
         top3 = ranked[:3]
 
-        st.subheader("🏆 Your Top 3 Recommended Careers")
-        
-        # Displaying only the Top 3 with confidence
-        for i, (career, conf) in enumerate(top3):
-            st.markdown(f"### {i+1}. {career}")
+        st.subheader("🏆 Your Top 3 Career Matches")
+        medals = ["🥇", "🥈", "🥉"]
+        for medal, (career, conf) in zip(medals, top3):
+            st.markdown(f"### {medal} {career}")
             st.progress(min(conf, 1.0))
-            st.write(f"Match Confidence: **{conf:.1%}**")
-            st.write("---")
+            st.caption(f"Confidence: {conf:.1%}")
+            st.markdown("")
 
     st.button("🔄 Retake the quiz", on_click=restart_quiz)
